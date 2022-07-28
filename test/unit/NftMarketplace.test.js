@@ -66,6 +66,48 @@ const { developmentChains } = require("../../helper-hardhat-config")
                   assert(listing.price.toString() == PRICE.toString())
               })
           })
+          //Test 3 things here:
+          // revert NotListed
+          //rever NotOwner
+          //emits ItemCancelled event
+          describe("cancelListing", function () {
+              it("reverts if there is no listing", async function () {
+                  //get the error
+                  const error = `NftMarketplace__NotListed("${basicNft.address}", ${TOKEN_ID})`
+                  //attempt to cancel without listing item
+                  await expect(
+                      nftMarketPlace.cancelListing(basicNft.address, TOKEN_ID)
+                  ).to.be.revertedWith(error)
+              })
+
+              it("reverts if anyone but the owner tries to cancel", async function () {
+                  //add item to listing
+                  await nftMarketPlace.listItem(basicNft.address, TOKEN_ID, PRICE)
+
+                  //change to a different user
+                  const nftMarketplaceContract = nftMarketPlace.connect(player)
+                  const error = `NftMarketplace___NotOwner()`
+
+                  //attempt to cancel
+                  await expect(
+                      nftMarketplaceContract.cancelListing(basicNft.address, TOKEN_ID)
+                  ).to.be.revertedWith(error)
+              })
+
+              it("emits event and removes listing", async function () {
+                  //add item to listing
+                  await nftMarketPlace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  //remove listing
+                  expect(await nftMarketPlace.cancelListing(basicNft.address, TOKEN_ID)).to.emit(
+                      "ItemCanceled"
+                  )
+
+                  //get listing
+                  const listing = await nftMarketPlace.getListing(basicNft.address, TOKEN_ID)
+                  console.log(listing)
+                  assert(listing.price.toString() == "0")
+              })
+          })
 
           //can be deleted later
           //   it("lists and can be bought", async function () {
