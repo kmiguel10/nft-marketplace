@@ -1,6 +1,6 @@
 const { TransactionOrderForkEvent } = require("@ethersproject/abstract-provider")
 const { assert, expect } = require("chai")
-const { network, deployments, ethers, getNamedAccounts } = require("hardhat")
+const { network, deployments, ethers, getNamedAccounts, userConfig } = require("hardhat")
 const { developmentChains } = require("../../helper-hardhat-config")
 
 !developmentChains.includes(network.name)
@@ -104,8 +104,57 @@ const { developmentChains } = require("../../helper-hardhat-config")
 
                   //get listing
                   const listing = await nftMarketPlace.getListing(basicNft.address, TOKEN_ID)
-                  console.log(listing)
                   assert(listing.price.toString() == "0")
+              })
+          })
+          //test
+          //revert if attempting to but item thats not listed ✅
+          //revert if attempting to buy with not enough eth ✅
+          //emit event after buying
+          describe("buyItem", function () {
+              it("reverts if there is no item to buy", async function () {
+                  //buy without listing
+                  await expect(
+                      nftMarketPlace.buyItem(basicNft.address, TOKEN_ID)
+                  ).to.be.revertedWith("NftMarketplace__NotListed")
+              })
+
+              it("reverts if payment is not enough", async function () {
+                  //payment - less than PRICE
+                  const payment = ethers.utils.parseEther("0.08")
+                  //list item
+                  await nftMarketPlace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  //buy item with payment less then price
+                  //expect revert
+                  await expect(nftMarketPlace.buyItem(basicNft.address, TOKEN_ID), {
+                      value: payment,
+                  }).to.be.revertedWith("NftMarketplace__PriceNotMet")
+              })
+
+              it("emits event after buying NFT", async function () {
+                  //list nft
+                  await nftMarketPlace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  //connect buyer
+                  const buyerNftMarketPlaceContract = nftMarketPlace.connect(player)
+                  //buy nft
+                  //check for event
+                  expect(
+                      await buyerNftMarketPlaceContract.buyItem(basicNft.address, TOKEN_ID, {
+                          value: PRICE,
+                      })
+                  ).to.emit("ItemBought")
+              })
+
+              it("checks for owner of new nft and proceeds is transferred to the seller", async function () {
+                  await nftMarketPlace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  const buyerNftMarketPlaceContract = nftMarketPlace.connect(player)
+                  await buyerNftMarketPlaceContract.buyItem(basicNft.address, TOKEN_ID, {
+                      value: PRICE,
+                  })
+                  const owner = await basicNft.ownerOf(TOKEN_ID)
+                  const deployerProceeds = await nftMarketPlace.getProceeds(deployer)
+                  assert(owner.toString() == player.address)
+                  assert(deployerProceeds.toString() == PRICE.toString())
               })
           })
 
