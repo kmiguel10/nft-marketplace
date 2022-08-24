@@ -184,4 +184,4 @@ contract NftMarketplace is ReentrancyGuard {
 // b. `buyItem` : Buy NFTs  ✅
 // c. `cancelItem` : Cancel a listing  ✅
 // d. `updateListing` : Update Price  ✅
-// e. `withdrawProceeds` : withdraw payment for bought NFTs
+// e. `withdrawProceeds` : withdraw payment for bought NFTs ✅
